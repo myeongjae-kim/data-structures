@@ -21,3 +21,5 @@ $(TARGET): $(OBJS)
 # Delete binary & object files.
 clean:
 	rm $(BIN)$(TARGET) $(OBJS)
+run:
+	$(BIN)$(TARGET) < $(BIN)input
