@@ -16,10 +16,11 @@ CPPFLAGS += -I$(INC)
 TARGET = a.out
 $(TARGET): $(OBJS)
 	$(CC) $(CXXFLAGS) $(CPPFLAGS) -o $(BIN)$(TARGET) $(OBJS) -L$(LIB)
-# $(BIN)$(TARGET)
 
 # Delete binary & object files.
 clean:
 	rm $(BIN)$(TARGET) $(OBJS)
+
+# Run program with input.
 run:
 	$(BIN)$(TARGET) < $(BIN)input
