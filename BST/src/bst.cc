@@ -19,8 +19,8 @@ void bst_t::destroy_tree(node_t* node) {
   }
 }
 
-bool bst_t::add (int elem) {
-  root = add(root, elem);
+bool bst_t::insert (int elem) {
+  root = insert(root, elem);
   return true;
 }
 
@@ -51,7 +51,6 @@ bool bst_t::remove(const int elem) {
 }
 
 void bst_t::print_inorder() {
-
   if (!root) {
     std::cout << "Tree is empty" << std::endl;
     return;
@@ -59,4 +58,8 @@ void bst_t::print_inorder() {
 
   print_inorder(root);
   std::cout << std::endl;
+}
+
+int bst_t::get_height() { 
+  return get_height(root);
 }

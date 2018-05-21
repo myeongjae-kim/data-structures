@@ -2,14 +2,6 @@
  * Iterative implementation.
  * Type is integer. Not unique elements. */
 
-/* Input
-7
-2 5 4 6 8 1 3
-
-Output
-1 2 3 4 5 6 8
-*/
-
 #include <cassert>
 
 class bst_t
@@ -18,10 +10,12 @@ public:
   bst_t ();
   virtual ~bst_t ();
 
-  bool add(const int);
+  bool insert(const int);
   bool has(const int);
   bool remove(const int);
   void print_inorder();
+  
+  int get_height(); // height of leaf nodes is 0
 
 private:
   /* data */
@@ -35,10 +29,21 @@ private:
 
   void destroy_tree(node_t*);
 
-  // These methods return private type.
+  // These methods use private type.
   // So the definitions of them should be in the class declaration.
+
+  int get_height(node_t *node) {
+    if (!node) {
+      return -1;
+    }
+
+    int left_height = get_height(node->left);
+    int right_height = get_height(node->right);
+
+    return left_height > right_height ? left_height + 1 : right_height + 1;
+  }
   
-  node_t* add(node_t* node, const int elem) {
+  node_t* insert(node_t *node, const int elem) {
     // Base case
     if (!node) {
       node = new node_t();
@@ -48,14 +53,14 @@ private:
 
     // Recursion
     if (elem <= node->elem) {
-      node->left = add(node->left, elem);
+      node->left = insert(node->left, elem);
     } else {
-      node->right = add(node->right, elem);
+      node->right = insert(node->right, elem);
     }
     return node;
   }
 
-  void print_inorder(node_t* node) {
+  void print_inorder(node_t *node) {
     if (node) {
       print_inorder(node->left);
       std::cout << node->elem << ' ';
@@ -63,7 +68,7 @@ private:
     }
   }
 
-  int get_max_elem_of_subtree(node_t* node) {
+  int get_max_elem_of_subtree(node_t *node) {
     assert(node);
     while (node->right) {
       node = node->right;
@@ -71,7 +76,7 @@ private:
     return node->elem;
   }
 
-  node_t* remove(node_t* node, const int target) {
+  node_t* remove(node_t *node, const int target) {
     assert(node);
 
     // base case
