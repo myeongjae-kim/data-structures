@@ -6,7 +6,7 @@ ConcurrentList::ConcurrentList() {
 
   // checking initialization of new_node
   assert(head->next == nullptr);
-  assert(head->status == ACTIVE);
+  assert(head->status == INVALID);
   assert(head->elem == 0);
 
   head->status = HEAD; // Dummy head
@@ -31,13 +31,13 @@ void ConcurrentList::insert(int elem) {
 
   // checking initialization of new_node
   assert(new_node->next == nullptr);
-  assert(new_node->status == ACTIVE);
+  assert(new_node->status == INVALID);
   assert(new_node->elem == 0);
 
   new_node->status = ACTIVE;
   new_node->elem = elem;
 
-  node_t* old_tail = __sync_fetch_and_add(&tail, new_node);
+  node_t* old_tail = __sync_lock_test_and_set(&tail, new_node);
   old_tail->next = new_node;
   __sync_fetch_and_add(&n_size, 1); // increase counter
   __sync_synchronize();
@@ -81,4 +81,9 @@ size_t ConcurrentList::size() {
 
 bool ConcurrentList::empty() {
   return n_size == 0;
+}
+
+
+ConcurrentList::node_t* ConcurrentList::getHead() {
+  return head;
 }

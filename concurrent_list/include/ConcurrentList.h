@@ -3,12 +3,13 @@
 
 #include <cstddef>
 #include <cassert>
+#include <cstdint>
 
 class ConcurrentList
 {
 public:
   // Types definition
-  enum status {INVALID, HEAD, ACTIVE, OBSOLETE};
+  enum status {INVALID, HEAD, ACTIVE, WAIT, OBSOLETE};
   struct node {
     struct node* next;
     enum status status;
@@ -33,6 +34,9 @@ public:
 
   // This method is used for safe iteration of list.
   node_t* getNext(node_t*);
+
+  // return head
+  node_t* getHead();
 
   // Deallocate OBSOLETEd nodes
   void deallocate(node_t*);

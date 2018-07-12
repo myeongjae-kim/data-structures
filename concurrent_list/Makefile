@@ -23,4 +23,4 @@ clean:
 
 # Run program with input.
 run:
-	$(BIN)$(TARGET) < $(BIN)input
+	$(BIN)$(TARGET)
