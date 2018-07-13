@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <pthread.h>
 #include <cstdlib>
+#include <vector>
 #include "ConcurrentList.h"
 
 using namespace std;
@@ -33,10 +34,12 @@ void* thread_main(void* args) {
   long tid = (long)args_ary[0];
   ConcurrentList* list = (ConcurrentList*) args_ary[1];
 
+  std::vector<ConcurrentList::node_t*> nodes;
+
   //printf("Thread %ld start.\n", tid);
 
   for(int i = 0; i < 100; i++) {
-    list->insert(tid * 1000000 + i);
+    nodes.push_back(list->insert(tid * 1000000 + i));
   }
   
   /* ConcurrentList::node_t* head = list->getHead();
@@ -45,6 +48,10 @@ void* thread_main(void* args) {
    * } */
 
   //printf("Thread %ld end.\n", tid);
+  
+  for(auto node : nodes) {
+    list->erase(node);
+  }
 
   delete[] args_ary;
   pthread_exit((void *) 0);
@@ -94,7 +101,7 @@ int main(void)
   }
 
   // Check consistency
-  assert(list.size() == N_THREAD * 100);
+  // assert(list.size() == N_THREAD * 100);
   printf("%ld\n", list.size());
   printf("%s\n", is_correct(list, list.size()) ? "Correct\n" : "Incorrect\n");
 

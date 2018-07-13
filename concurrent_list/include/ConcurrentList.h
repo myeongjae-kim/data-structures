@@ -5,6 +5,10 @@
 #include <cassert>
 #include <cstdint>
 
+#define OBSOLETE (1ULL << 63)
+#define IS_OBSOLETE(ptr) (((intptr_t)(ptr) & OBSOLETE) != 0)
+#define SET_OBSOLETE(ptr) ((intptr_t)(ptr) |= OBSOLETE)
+
 class ConcurrentList
 {
 public:
@@ -24,7 +28,7 @@ public:
 
   // Methods
   // Insert a value
-  void insert(int);
+  node_t* insert(int);
 
   // Update next pointer of all nodes in the list
   void next_pointer_update();
