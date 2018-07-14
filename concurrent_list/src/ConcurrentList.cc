@@ -31,7 +31,7 @@ ConcurrentList::~ConcurrentList() {
 // First, update tail node using atomic instruction.
 // Second, connect old_tail to new tail.
 // Third, call next_pointer_update() to skip OBSOLETE nodes.
-ConcurrentList::node_t* ConcurrentList::insert(int elem) {
+ConcurrentList::node_t* ConcurrentList::push_back(int elem) {
   node_t* new_node = new node_t();
 
   // checking initialization of new_node
@@ -62,23 +62,29 @@ ConcurrentList::node_t* ConcurrentList::insert(int elem) {
 void ConcurrentList::next_pointer_update() {
   node_t *pred = nullptr, *curr = nullptr, *succ = nullptr;
 
-  pred = head;
-
+retry:
   while(true) {
+    pred = head;
     curr = getNext(pred);
-    
-    if(!curr) break;
 
-    if(curr->status == OBSOLETE) {
+    while(true) {
+      if(!curr) return;
+
       succ = getNext(curr);
+      if(!succ) return;
 
-      // if next of curr is still succ,
-      // pred->next = succ. These compare and assign must be
-      // conducted atomically.
+      while(curr->status == OBSOLETE) {
+        if(! __sync_bool_compare_and_swap(&pred->next, curr, succ))
+          goto retry;
 
-      pred->next = succ;
-    } else {
-      pred = getNext(pred);
+        curr = succ;
+        if(!curr) return;
+
+        succ = getNext(curr);
+        if(!succ) return;
+      }
+      pred = curr;
+      curr = succ;
     }
   }
 }

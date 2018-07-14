@@ -11,6 +11,7 @@ bool is_correct(ConcurrentList & list, size_t s) {
     return false;
 
   size_t count = 0;
+  size_t actual_size = 0;
 
   ConcurrentList::node_t* head = list.getHead();
 
@@ -18,12 +19,14 @@ bool is_correct(ConcurrentList & list, size_t s) {
     head = list.getNext(head);
     if(!head) break;
 
+    actual_size++;
     if(head->status == ConcurrentList::OBSOLETE)
       continue;
 
     count++;
-    printf("%d\n", head->elem);
+    // printf("%d\n", head->elem);
   }
+  printf("Actual nodes: %ld\n", actual_size);
 
   return count == s;
 }
@@ -39,30 +42,29 @@ void* thread_main(void* args) {
   //printf("Thread %ld start.\n", tid);
 
   for(int i = 0; i < 100; i++) {
-    nodes.push_back(list->insert(tid * 1000000 + i));
+    nodes.push_back(list->push_back(tid * 1000000 + i));
   }
   
-  /* ConcurrentList::node_t* head = list->getHead();
-   * for(int i = 0; i < 10; i++) {
-   *   list->erase(head);
-   * } */
-
   //printf("Thread %ld end.\n", tid);
   
-  for(auto node : nodes) {
-    list->erase(node);
+  int cnt = 0;
+  for(auto it = nodes.rbegin();
+      cnt < 10;
+      // it != nodes.rend();
+      cnt++, it++) {
+    list->erase(*it);
   }
 
   delete[] args_ary;
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 100
+#define N_THREAD 10
 pthread_t threads[N_THREAD];
 
 void test(ConcurrentList &list) {
   for(int i = 0; i < 10; i++) {
-    list.insert(i);
+    list.push_back(i);
   }
 
   ConcurrentList::node_t *head = list.getHead();
@@ -100,9 +102,11 @@ int main(void)
     pthread_join(threads[i], NULL);
   }
 
+  list.next_pointer_update();
+
   // Check consistency
   // assert(list.size() == N_THREAD * 100);
-  printf("%ld\n", list.size());
+  printf("Active nodes: %ld\n", list.size());
   printf("%s\n", is_correct(list, list.size()) ? "Correct\n" : "Incorrect\n");
 
   return 0;
