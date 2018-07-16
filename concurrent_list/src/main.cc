@@ -59,34 +59,12 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 10
+#define N_THREAD 500
 pthread_t threads[N_THREAD];
-
-void test(ConcurrentList &list) {
-  for(int i = 0; i < 10; i++) {
-    list.push_back(i);
-  }
-
-  ConcurrentList::node_t *head = list.getHead();
-
-  head = list.getNext(head);
-  head = list.getNext(head);
-
-  list.erase(head);
-  head = list.getNext(head);
-  list.erase(head);
-  head = list.getNext(head);
-
-  printf("\n%ld\n", list.size());
-  printf("%s\n", is_correct(list, 10-2) ? "Correct\n" : "Incorrect\n");
-
-  exit(0);
-}
 
 int main(void)
 {
   ConcurrentList list;
-  // test(list);
 
   int tid = 1;
 
@@ -105,7 +83,6 @@ int main(void)
   list.next_pointer_update();
 
   // Check consistency
-  // assert(list.size() == N_THREAD * 100);
   printf("Active nodes: %ld\n", list.size());
   printf("%s\n", is_correct(list, list.size()) ? "Correct\n" : "Incorrect\n");
 

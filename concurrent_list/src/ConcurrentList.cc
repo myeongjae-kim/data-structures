@@ -66,10 +66,9 @@ retry:
   while(true) {
     pred = head;
     curr = getNext(pred);
+    if(!curr) return;
 
     while(true) {
-      if(!curr) return;
-
       succ = getNext(curr);
       if(!succ) return;
 
@@ -78,8 +77,6 @@ retry:
           goto retry;
 
         curr = succ;
-        if(!curr) return;
-
         succ = getNext(curr);
         if(!succ) return;
       }

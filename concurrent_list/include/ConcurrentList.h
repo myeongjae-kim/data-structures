@@ -14,10 +14,17 @@ class ConcurrentList
 public:
   // Types definition
   enum status {INVALID, HEAD, ACTIVE, WAIT, OBSOLETE};
+
+  typedef struct MetaData {
+    int i_idx; // index array idx
+    int s_idx; // segment array idx
+  } MetaData;
+
   struct node {
     struct node* next;
     enum status status;
     int elem;
+    MetaData metaData;
   };
   typedef struct node node_t;
 
