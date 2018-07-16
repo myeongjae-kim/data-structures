@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cassert>
 #include <cstdint>
+#include <pthread.h>
 
 /* #define OBSOLETE (1ULL << 63)
  * #define IS_OBSOLETE(ptr) (((intptr_t)(ptr) & OBSOLETE) != 0)
@@ -25,8 +26,9 @@
 #define INVALID_BIT (1ULL<<63);
 #define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
 #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
-#define GET_ADR(ptr) (((intptr_t)(ptr) << 16 >>) 16)
+#define GET_ADR(ptr) (((intptr_t)(ptr) << 16) >> 16)
 
+#define INDEX_ARRAY_SIZE 8 // It should be large enough
 
 
 
@@ -96,15 +98,32 @@ private:
     
     ConcurrentList::node_t** indexArray;
     char* BVector;
+    int BVector_size;
+
+    pthread_t preAllocator;
+    pthread_mutex_t cond_mutex;
+    pthread_cond_t cond;
+    bool finished;
+    bool sleeping;
   } IndexArray;
 
   IndexArray IA;
 
-  void initIndexArray(size_t);
+  void initIndexArray();
   void destroyIndexArray();
 
   void allocate_new_array();
 
   ConcurrentList::node_t* allocate_node();
 
+  void doubleIndexArray();
+
+  bool is_new_allocation_needed();
+
+  void BVector_turn_on_bits(int);
+  void BVector_turn_on_bits_recur(int);
+  void BVector_turn_on_bits_check();
+
+public:
+  void* preAllocate(void*);
 };

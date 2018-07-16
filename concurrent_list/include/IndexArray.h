@@ -16,7 +16,7 @@
 #define INVALID_BIT (1ULL<<63);
 #define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
 #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
-#define GET_ADR(ptr) (((intptr_t)(ptr) << 16 >>) 16)
+// #define GET_ADR(ptr) (((intptr_t)(ptr) << 16 >>) 16)
 
 class IndexArray
 {
