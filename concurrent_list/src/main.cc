@@ -59,7 +59,7 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 500
+#define N_THREAD 25
 pthread_t threads[N_THREAD];
 
 int main(void)

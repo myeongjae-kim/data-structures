@@ -10,7 +10,7 @@ IndexArray::IndexArray (size_t i_size) {
   indexArray = new ConcurrentList::node_t*[i_size];
 
   for(size_t i = 0; i < i_size; i++) {
-    indexArray[i] = (ConcurrentList::node_t*)INVALID;
+    indexArray[i] = (ConcurrentList::node_t*)INVALID_BIT;
   }
 
   head = tail = last_used_i_idx = next_s_idx = 0;

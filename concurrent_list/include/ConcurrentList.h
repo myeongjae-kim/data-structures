@@ -1,5 +1,6 @@
 // This linked list is based on the paper:
 //  A Scalable Lock Manager for Multicores, Hyungsoo Jung, et al.
+#pragma once
 
 #include <cstddef>
 #include <cassert>
@@ -8,6 +9,26 @@
 /* #define OBSOLETE (1ULL << 63)
  * #define IS_OBSOLETE(ptr) (((intptr_t)(ptr) & OBSOLETE) != 0)
  * #define SET_OBSOLETE(ptr) ((intptr_t)(ptr) |= OBSOLETE) */
+
+/****** These are for index array ******/
+#define LEVEL (4) // Level of segment array
+// s_size = (size_t) 0x1 << (3 * (LEVEL -1));
+// Level 4:
+//        1
+//        8
+//       64
+//       512
+//
+// Each segment array has 512 locks.
+// If a size of IndexArray is 8, then this array has 512 * 8 = 4096 locks.
+
+#define INVALID_BIT (1ULL<<63);
+#define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
+#define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
+#define GET_ADR(ptr) (((intptr_t)(ptr) << 16 >>) 16)
+
+
+
 
 class ConcurrentList
 {
@@ -61,4 +82,29 @@ private:
 
   node_t* head;
   node_t* tail;
+
+  // Below is for IndexArray
+  typedef struct IndexArray {
+      /* data */
+    size_t i_size;  // Size of index array.
+    size_t s_size;  // Size of segment array.
+
+    size_t head;
+    size_t tail;
+    size_t last_used_i_idx;
+    size_t next_s_idx;
+    
+    ConcurrentList::node_t** indexArray;
+    char* BVector;
+  } IndexArray;
+
+  IndexArray IA;
+
+  void initIndexArray(size_t);
+  void destroyIndexArray();
+
+  void allocate_new_array();
+
+  ConcurrentList::node_t* allocate_node();
+
 };

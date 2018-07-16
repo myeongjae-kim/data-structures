@@ -6,8 +6,11 @@
 // to mark the OBSOLETE bit.
 
 ConcurrentList::ConcurrentList() {
+  initIndexArray(10);
+
   n_size = 0;
-  head = new node_t();
+  // head = new node_t();
+  head = allocate_node();
 
   // checking initialization of new_node
   assert(head->next == nullptr);
@@ -20,11 +23,7 @@ ConcurrentList::ConcurrentList() {
 }
 
 ConcurrentList::~ConcurrentList() {
-  while(head) {
-    node_t* next = head->next;
-    delete head;
-    head = next;
-  }
+  destroyIndexArray();
 }
 
 // Insert a node to a list.
@@ -32,7 +31,8 @@ ConcurrentList::~ConcurrentList() {
 // Second, connect old_tail to new tail.
 // Third, call next_pointer_update() to skip OBSOLETE nodes.
 ConcurrentList::node_t* ConcurrentList::push_back(int elem) {
-  node_t* new_node = new node_t();
+  // node_t* new_node = new node_t();
+  node_t* new_node = allocate_node();
 
   // checking initialization of new_node
   assert(new_node->next == nullptr);
@@ -125,4 +125,53 @@ bool ConcurrentList::empty() {
 
 ConcurrentList::node_t* ConcurrentList::getHead() {
   return head;
+}
+
+void ConcurrentList::initIndexArray(size_t i_size) {
+  if(i_size < 10) i_size = 10; // At least 10 segment arrays
+  
+  IA.i_size = i_size;
+
+  IA.s_size = (size_t) 0x1 << (3 * (LEVEL - 1));
+
+  IA.indexArray = new ConcurrentList::node_t*[i_size];
+
+  for(size_t i = 0; i < i_size; i++) {
+    IA.indexArray[i] = (ConcurrentList::node_t*)INVALID_BIT;
+  }
+
+  IA.head = IA.tail = IA.last_used_i_idx = IA.next_s_idx = 0;
+  
+  // allocate five arrays first.
+  IA.head += 5;
+  for(size_t i = 0; i < IA.head; i++) {
+    IA.indexArray[i] = new ConcurrentList::node_t[IA.s_size]();
+    for(size_t s = 0; s < IA.s_size; s++) {
+      IA.indexArray[i][s].metaData.i_idx = i;
+      IA.indexArray[i][s].metaData.s_idx = s;
+    }
+  }
+}
+
+void ConcurrentList::destroyIndexArray() {
+  delete[] IA.indexArray;
+}
+
+#include <cstdio>
+#include <cstdlib>
+
+ConcurrentList::node_t* ConcurrentList::allocate_node() {
+  if(IA.next_s_idx == IA.s_size) { 
+     IA.last_used_i_idx = (IA.last_used_i_idx + 1) % IA.i_size;
+     IA.next_s_idx = 0;
+  }
+
+  // TODO: low-water mark
+
+  if(IA.last_used_i_idx >= IA.head) {
+    printf("No more pre-allocated memory\n");
+    exit(1);
+  }
+
+  return &IA.indexArray[IA.last_used_i_idx][IA.next_s_idx++];
 }
