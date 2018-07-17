@@ -41,7 +41,7 @@ void* thread_main(void* args) {
 
   //printf("Thread %ld start.\n", tid);
 
-  for(int i = 0; i < 256; i++) {
+  for(int i = 0; i < 512; i++) {
     nodes.push_back(list->push_back(tid * 1000000 + i));
   }
   
@@ -49,8 +49,8 @@ void* thread_main(void* args) {
   
   int cnt = 0;
   for(auto it = nodes.rbegin();
-      cnt < 10;
-      // it != nodes.rend();
+      // cnt < 10;
+      it != nodes.rend();
       cnt++, it++) {
     list->erase(*it);
   }
@@ -59,7 +59,7 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 8
+#define N_THREAD 7
 pthread_t threads[N_THREAD];
 
 int main(void)
@@ -85,6 +85,10 @@ int main(void)
   // Check consistency
   printf("Active nodes: %ld\n", list.size());
   printf("%s\n", is_correct(list, list.size()) ? "Correct\n" : "Incorrect\n");
+
+  for(int i = 0; i < N_THREAD; i++) {
+    list.BVector_turn_off_bits_check_by_array(i);
+  }
 
   return 0;
 }

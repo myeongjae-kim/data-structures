@@ -16,8 +16,7 @@ ConcurrentList::ConcurrentList() {
   initIndexArray();
 
   n_size = 0;
-  // head = new node_t();
-  head = allocate_node();
+  head = new node_t(); // don't allocate it from the pool
 
   // checking initialization of new_node
   assert(head->next == nullptr);
@@ -31,6 +30,7 @@ ConcurrentList::ConcurrentList() {
 
 ConcurrentList::~ConcurrentList() {
   destroyIndexArray();
+  delete head;
 }
 
 // Insert a node to a list.
@@ -115,10 +115,13 @@ void ConcurrentList::erase(node_t *node) {
   node->status = OBSOLETE;
   __sync_synchronize();
   __sync_fetch_and_sub(&n_size, 1); // decrease counter
+
+  BVector_flip_and_test(node->metaData);
 }
 
-void ConcurrentList::deallocate(node_t *node) {
+void* ConcurrentList::lazy_deAllocate(void* arg) {
 
+  return nullptr;
 }
 
 size_t ConcurrentList::size() {
@@ -172,20 +175,13 @@ void ConcurrentList::initIndexArray() {
   // IA.head = (largest allocated offset + 1)
   IA.head += 2;
   for(size_t i = 0; i < IA.head; i++) {
-    IA.indexArray[i] = new ConcurrentList::node_t[IA.s_size]();
-    for(size_t s = 0; s < IA.s_size; s++) {
-      IA.indexArray[i][s].metaData.i_idx = i;
-      IA.indexArray[i][s].metaData.s_idx = s;
-    }
-
-    // Turn on bits in BVector.
-    BVector_turn_on_bits(i);
+    allocate_new_array(i);
   }
   // BVector_turn_on_bits_check();
 
   // Run preallocator
-  IA.finished = false;
-  IA.sleeping = true;
+  IA.preallocator_finished = false;
+  IA.preallocator_sleeping = true;
   pthread_mutex_init(&IA.cond_mutex, nullptr);
   pthread_cond_init(&IA.cond, nullptr);
   pthread_create(&IA.preAllocator, nullptr, wrap_preallocate, this);
@@ -194,7 +190,7 @@ void ConcurrentList::initIndexArray() {
 void ConcurrentList::destroyIndexArray() {
   // finish preallocator
   pthread_mutex_lock(&IA.cond_mutex);
-  IA.finished = true;
+  IA.preallocator_finished = true;
   pthread_cond_signal(&IA.cond);
   pthread_mutex_unlock(&IA.cond_mutex);
 
@@ -209,6 +205,18 @@ void ConcurrentList::destroyIndexArray() {
   delete[] IA.indexArray;
 
   delete[] IA.BVector;
+}
+
+
+void ConcurrentList::allocate_new_array(int i) {
+  IA.indexArray[i] = new ConcurrentList::node_t[IA.s_size]();
+  for(size_t s = 0; s < IA.s_size; s++) {
+    IA.indexArray[i][s].metaData.i_idx = i;
+    IA.indexArray[i][s].metaData.s_idx = s;
+  }
+
+  // Turn on bits in BVector.
+  BVector_turn_on_bits(i);
 }
 
 
@@ -228,14 +236,16 @@ ConcurrentList::node_t* ConcurrentList::allocate_node() {
 
   // Wake up preallocator it it needs to be called.
   if(is_new_allocation_needed()) {
+    pthread_mutex_lock(&IA.cond_mutex);
     pthread_cond_signal(&IA.cond);
+    pthread_mutex_unlock(&IA.cond_mutex);
   }
 
   // pause if there is no more allocated memory
   // IA.head is modified in the preallocator and additional memory is allocated.
   // Wait until the preallocator is done
   while(total_s_idx >= (size_t)(IA.head * IA.s_size)
-      || IA.sleeping == false);
+      || IA.preallocator_sleeping == false);
 
   return &IA.indexArray[i_idx][s_idx];
 }
@@ -245,23 +255,33 @@ void* ConcurrentList::preAllocate(void*) {
   if(DBG_PREALLOC)
     printf("preallocator\n");
 
-  while(!IA.finished) {
+  while(!IA.preallocator_finished) {
     // If there is no free slot of segment array,
     // Exit with error message
-    IA.sleeping = false;
+    IA.preallocator_sleeping = false;
 
-    if( (IA.head + 1) % IA.i_size  == IA.tail) {
-      printf("No more segment array slot.\n");
-      printf("Increase the semgnet array number.\n");
-      exit(1);
-    }
 
     // allocate additional segment array and move head foward
     if(is_new_allocation_needed()) {
       if(DBG_PREALLOC)
-        printf("allocate new array by preallocator\n");
+        printf("Trying to allocate new array by preallocator\n");
       size_t old_head = __sync_fetch_and_add(&IA.head, 1);
-      IA.indexArray[old_head] = new ConcurrentList::node_t[IA.s_size]();
+
+      if(old_head < IA.i_size) {
+        allocate_new_array(old_head);
+
+        if(DBG_PREALLOC)
+          printf("New array is allocated.\n");
+      } else if(old_head == IA.i_size){
+        if(DBG_PREALLOC) {
+          printf("Fail to allocate new array.");
+          printf("Now only one array is left.\n");
+        }
+      } else {
+        printf("No more segment array slot.\n");
+        printf("Increase the semgnet array number.\n");
+        exit(1);
+      }
     }
 
 
@@ -276,8 +296,8 @@ void* ConcurrentList::preAllocate(void*) {
  *     } */
 
     pthread_mutex_lock(&IA.cond_mutex);
-    IA.sleeping = true;
-    if(IA.finished == true) break;
+    IA.preallocator_sleeping = true;
+    if(IA.preallocator_finished == true) break;
 
     if(DBG_PREALLOC)
       printf("sleep preallocator\n");
@@ -315,6 +335,19 @@ void ConcurrentList::BVector_turn_on_bits(int idx) {
   }
 }
 
+void ConcurrentList::BVector_flip_and_test(MetaData metaData) {
+  int j = LEVEL - 1;
+  int i = IA.BVector_size - (0x8 << (3*j)); // start of the level k
+  int pos = metaData.i_idx * IA.s_size + metaData.s_idx;
+ 
+  for(; i >= 0; i -= (0x8 << (3*(--j))) ) {
+    IA.BVector[i + pos] = 0x0;
+    __sync_synchronize();
+    if( * (long *) (IA.BVector + i + (pos&0xFFFFFFF8)) != 0)
+      return;
+    pos>>=3;
+  }
+}
 
 // check whether every bits on
 void ConcurrentList::BVector_turn_on_bits_check() {
@@ -322,3 +355,34 @@ void ConcurrentList::BVector_turn_on_bits_check() {
     assert(IA.BVector[i] == 1);
   }
 }
+
+// check whether every bits off
+void ConcurrentList::BVector_turn_off_bits_check() {
+  for(int i = 0; i < IA.BVector_size; i++) {
+    assert(IA.BVector[i] == 0);
+  }
+}
+
+
+void ConcurrentList::BVector_turn_off_bits_check_by_array_recur(int idx) {
+  idx++;
+  if(idx << 3 < IA.BVector_size) {
+    assert( *(long*)(IA.BVector + (idx << 3)) == 0);
+    for(int i = 0; i < 1 << 3; i++) {
+      BVector_turn_off_bits_check_by_array_recur((idx << 3) + i);
+    }
+  }
+}
+
+void ConcurrentList::BVector_turn_off_bits_check_by_array(int idx) {
+  assert(IA.BVector[idx] == 0);
+
+  idx++;
+  if(idx << 3 < IA.BVector_size) {
+    assert( *(long*)(IA.BVector + (idx << 3)) == 0);
+    for(int i = 0; i < 1 << 3; i++) {
+      BVector_turn_off_bits_check_by_array_recur((idx << 3) + i);
+    }
+  }
+}
+

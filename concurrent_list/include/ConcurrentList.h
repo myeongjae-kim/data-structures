@@ -30,8 +30,6 @@
 
 #define INDEX_ARRAY_SIZE 8 // It should be large enough
 
-
-
 class ConcurrentList
 {
 public:
@@ -72,9 +70,6 @@ public:
   // return head
   node_t* getHead();
 
-  // Deallocate OBSOLETEd nodes
-  void deallocate(node_t*);
-
   size_t size();
   bool empty();
 
@@ -103,8 +98,8 @@ private:
     pthread_t preAllocator;
     pthread_mutex_t cond_mutex;
     pthread_cond_t cond;
-    bool finished;
-    bool sleeping;
+    bool preallocator_finished;
+    bool preallocator_sleeping;
   } IndexArray;
 
   IndexArray IA;
@@ -112,7 +107,7 @@ private:
   void initIndexArray();
   void destroyIndexArray();
 
-  void allocate_new_array();
+  void allocate_new_array(int);
 
   ConcurrentList::node_t* allocate_node();
 
@@ -123,7 +118,15 @@ private:
   void BVector_turn_on_bits(int);
   void BVector_turn_on_bits_recur(int);
   void BVector_turn_on_bits_check();
+  void BVector_flip_and_test(MetaData);
 
 public:
   void* preAllocate(void*);
+  // Deallocate OBSOLETEd nodes
+  void* lazy_deAllocate(void*);
+
+
+  void BVector_turn_off_bits_check();
+  void BVector_turn_off_bits_check_by_array(int);
+  void BVector_turn_off_bits_check_by_array_recur(int);
 };
