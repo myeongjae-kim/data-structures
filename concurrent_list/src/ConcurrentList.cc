@@ -16,7 +16,7 @@
 
 ConcurrentList::ConcurrentList() {
   n_size = 0;
-  head = new node_t(); // don't allocate it from the pool
+  head = (node_t*)calloc(1, sizeof(node_t)); // don't allocate it from the pool
 
   // checking initialization of new_node
   assert(head->next == nullptr);
@@ -32,7 +32,7 @@ ConcurrentList::ConcurrentList() {
 
 ConcurrentList::~ConcurrentList() {
   destroyIndexArray();
-  delete head;
+  free(head);
 }
 
 // Insert a node to a list.
@@ -148,9 +148,8 @@ void* ConcurrentList::lazy_deAllocate(void*) {
         if(DBG_DEALLOC)
           printf("Deallocate segment array idx %ld.\n", i);
 
-        delete[] IA.indexArray[i];
-        IA.indexArray[i] = nullptr;
-        IA.indexArray[i] = (node_t*)SET_INVALID_BIT(IA.indexArray[i]);
+        free(IA.indexArray[i]);
+        IA.indexArray[i] = (node_t*)SET_INVALID_BIT(nullptr);
       } else {
         if(DBG_DEALLOC)
           printf("Fail to deallocate segment array idx %ld.\n", i);
@@ -215,14 +214,14 @@ void ConcurrentList::initIndexArray() {
   bv_size *= INDEX_ARRAY_SIZE;
 
   IA.BVector_size = bv_size;
-  IA.BVector = new char[IA.BVector_size]();
+  IA.BVector = (char*)calloc(IA.BVector_size, sizeof(char));
 
   // Calculate index array size and segment array size
   IA.i_size = INDEX_ARRAY_SIZE;
 
   IA.s_size = (size_t) 0x1 << (3 * (LEVEL - 1));
 
-  IA.indexArray = new ConcurrentList::node_t*[IA.i_size];
+  IA.indexArray = (node_t**)calloc(IA.i_size, sizeof(node_t*));
 
   for(size_t i = 0; i < IA.i_size; i++) {
     IA.indexArray[i] = (ConcurrentList::node_t*)INVALID_BIT;
@@ -276,23 +275,29 @@ void ConcurrentList::destroyIndexArray() {
   for(int i = 0; i < INDEX_ARRAY_SIZE; i++) {
     node_t* ptr = (node_t*)GET_ADR(IA.indexArray[i]);
     if(ptr != nullptr)
-      delete[] ptr;
+      free(ptr);
   }
-  delete[] IA.indexArray;
 
-  delete[] IA.BVector;
+  free(IA.indexArray);
+
+  free(IA.BVector);
 }
 
 
 void ConcurrentList::allocate_new_array(int i) {
-  IA.indexArray[i] = new ConcurrentList::node_t[IA.s_size]();
+  // Turn on bits in BVector.
+  BVector_turn_on_bits(i);
+
+  if((IA.indexArray[i] = (node_t*)calloc(IA.s_size, sizeof(node_t)))
+      == nullptr) {
+    printf("Allocation error\n");
+    assert(false);
+  }
+
   for(size_t s = 0; s < IA.s_size; s++) {
     IA.indexArray[i][s].metaData.i_idx = i;
     IA.indexArray[i][s].metaData.s_idx = s;
   }
-
-  // Turn on bits in BVector.
-  BVector_turn_on_bits(i);
 }
 
 
@@ -314,6 +319,7 @@ ConcurrentList::node_t* ConcurrentList::allocate_node() {
   if(is_new_allocation_needed()) {
     pthread_mutex_lock(&IA.preallocator_cond_mutex);
     pthread_cond_signal(&IA.preallocator_cond);
+    IA.preallocator_sleeping = false;
     pthread_mutex_unlock(&IA.preallocator_cond_mutex);
 
     // pause if there is no more allocated memory
@@ -323,7 +329,6 @@ ConcurrentList::node_t* ConcurrentList::allocate_node() {
         || IA.preallocator_sleeping == false);
   }
 
-  
   return &IA.indexArray[i_idx][s_idx];
 }
 
@@ -335,8 +340,6 @@ void* ConcurrentList::preAllocate(void*) {
   while(!IA.preallocator_finished) {
     // If there is no free slot of segment array,
     // Exit with error message
-    IA.preallocator_sleeping = false;
-
 
     // allocate additional segment array and move head foward
     if(is_new_allocation_needed()) {
@@ -377,7 +380,10 @@ void* ConcurrentList::preAllocate(void*) {
 
     pthread_mutex_lock(&IA.preallocator_cond_mutex);
     IA.preallocator_sleeping = true;
-    if(IA.preallocator_finished == true) break;
+    if(IA.preallocator_finished == true) {
+      pthread_mutex_unlock(&IA.preallocator_cond_mutex);
+      break;
+    }
 
     if(DBG_PREALLOC)
       printf("sleep preallocator\n");

@@ -59,7 +59,7 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 7
+#define N_THREAD 31
 pthread_t threads[N_THREAD];
 
 int main(void)
@@ -86,9 +86,9 @@ int main(void)
   printf("Active nodes: %ld\n", list.size());
   printf("%s\n", is_correct(list, list.size()) ? "Correct\n" : "Incorrect\n");
 
-  for(int i = 0; i < N_THREAD; i++) {
-    list.BVector_turn_off_bits_check_by_array(i);
-  }
+  /* for(int i = 0; i < N_THREAD; i++) {
+   *   list.BVector_turn_off_bits_check_by_array(i);
+   * } */
 
   return 0;
 }

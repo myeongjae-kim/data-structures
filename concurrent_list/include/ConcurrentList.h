@@ -12,7 +12,8 @@
  * #define SET_OBSOLETE(ptr) ((intptr_t)(ptr) |= OBSOLETE) */
 
 /****** These are for index array ******/
-#define LEVEL (4) // Level of segment array
+#define LEVEL (5) // Level of segment array
+#define INDEX_ARRAY_SIZE 8 // It must be 8, because of flip_and_test function
 // s_size = (size_t) 0x1 << (3 * (LEVEL -1));
 // Level 4:
 //        1
@@ -28,7 +29,6 @@
 #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
 #define GET_ADR(ptr) (((intptr_t)(ptr) << 16) >> 16)
 
-#define INDEX_ARRAY_SIZE 8 // It should be large enough
 
 class ConcurrentList
 {
