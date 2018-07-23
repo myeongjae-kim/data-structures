@@ -13,9 +13,9 @@
 // Each segment array has 512 locks.
 // If a size of IndexArray is 8, then this array has 512 * 8 = 4096 locks.
 
-#define INVALID_BIT (1ULL<<63);
-#define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
-#define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
+// #define INVALID_BIT (1ULL<<63)
+// #define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
+// #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
 // #define GET_ADR(ptr) (((intptr_t)(ptr) << 16 >>) 16)
 
 class IndexArray

@@ -23,7 +23,7 @@
 // Each segment array has 512 locks.
 // If a size of IndexArray is 8, then this array has 512 * 8 = 4096 locks.
 
-#define INVALID_BIT (1ULL<<63);
+#define INVALID_BIT (1ULL<<63)
 #define SET_INVALID_BIT(ptr) ((intptr_t)(ptr) | INVALID_BIT)
 #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
 #define GET_ADR(ptr) (((intptr_t)(ptr) << 16) >> 16)
@@ -96,10 +96,16 @@ private:
     int BVector_size;
 
     pthread_t preAllocator;
-    pthread_mutex_t cond_mutex;
-    pthread_cond_t cond;
+    pthread_mutex_t preallocator_cond_mutex;
+    pthread_cond_t preallocator_cond;
     bool preallocator_finished;
     bool preallocator_sleeping;
+
+    pthread_t deAllocator;
+    pthread_mutex_t deallocator_cond_mutex;
+    pthread_cond_t deallocator_cond;
+    bool deallocator_finished;
+    bool deallocator_sleeping;
   } IndexArray;
 
   IndexArray IA;
