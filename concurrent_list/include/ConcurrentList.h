@@ -12,7 +12,7 @@
  * #define SET_OBSOLETE(ptr) ((intptr_t)(ptr) |= OBSOLETE) */
 
 /****** These are for index array ******/
-#define LEVEL (5) // Level of segment array
+#define LEVEL (4) // Level of segment array
 #define INDEX_ARRAY_SIZE 8 // It must be 8, because of flip_and_test function
 // s_size = (size_t) 0x1 << (3 * (LEVEL -1));
 // Level 4:
@@ -116,7 +116,7 @@ private:
   void initIndexArray();
   void destroyIndexArray();
 
-  void allocate_new_array(int);
+  bool allocate_new_array(int);
 
   ConcurrentList::node_t* allocate_node();
 

@@ -41,8 +41,8 @@ void* thread_main(void* args) {
 
   //printf("Thread %ld start.\n", tid);
 
-  for(int k = 0; k < 1;k++) {
-    for(int i = 0; i < 4096; i++) {
+  for(int k = 0; k < 512;k++) {
+    for(int i = 0; i < 1; i++) {
       nodes.push_back(list->push_back(tid * 1000000 + i));
     }
     
@@ -63,7 +63,7 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 8
+#define N_THREAD 16
 pthread_t threads[N_THREAD];
 
 int main(void)

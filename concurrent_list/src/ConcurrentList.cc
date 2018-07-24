@@ -130,10 +130,11 @@ void* ConcurrentList::lazy_deAllocate(void*) {
 
     next_pointer_update();
     __sync_synchronize();
-
-    for(size_t i = IA.tail;
-        i != IA.head;
-        i++) {
+    
+    for(size_t i = 0; i < IA.i_size; i++) {
+    /* for(size_t i = IA.tail;
+     *     i != IA.head;
+     *     i++) { */
       i %= IA.i_size;
 
       if(DBG_DEALLOC)
@@ -173,9 +174,8 @@ void* ConcurrentList::lazy_deAllocate(void*) {
     if(DBG_DEALLOC)
       printf("sleep deallocator\n");
     // pthread_cond_wait(&IA.deallocator_cond, &IA.deallocator_cond_mutex);
-    usleep(200000);
-
     pthread_mutex_unlock(&IA.deallocator_cond_mutex);
+    usleep(200000);
   }
 
 
@@ -302,7 +302,10 @@ void ConcurrentList::destroyIndexArray() {
 }
 
 
-void ConcurrentList::allocate_new_array(int i) {
+// ith segment array must be deallocated.
+bool ConcurrentList::allocate_new_array(int i) {
+  if(IA.indexArray[i] != (node_t*)INVALID_BIT) return false;
+
   // Turn on bits in BVector.
   BVector_turn_on_bits(i);
 
@@ -316,13 +319,15 @@ void ConcurrentList::allocate_new_array(int i) {
     IA.indexArray[i][s].metaData.i_idx = i;
     IA.indexArray[i][s].metaData.s_idx = s;
   }
+  return true;
 }
 
 
 bool ConcurrentList::is_new_allocation_needed() {
   size_t i_idx = IA.next_s_idx / IA.s_size;
 
-  return abs(i_idx - IA.head) <= 1;
+  return abs( (i_idx % IA.i_size) - IA.head) <= 1;
+            // || (i_idx + 1) % IA.i_size == IA.head;
 }
 
 ConcurrentList::node_t* ConcurrentList::allocate_node() {
@@ -335,6 +340,7 @@ ConcurrentList::node_t* ConcurrentList::allocate_node() {
 
   // Wake up preallocator it it needs to be called.
   if(is_new_allocation_needed()) {
+allocate_again:
     bool wait_preallocator = false;
 
     pthread_mutex_lock(&IA.preallocator_cond_mutex);
@@ -358,6 +364,14 @@ ConcurrentList::node_t* ConcurrentList::allocate_node() {
       while(IA.preallocator_sleeping == false);
   }
 
+
+  if(HAS_INVALID_BIT(IA.indexArray[i_idx]) ||
+      IA.indexArray[i_idx][s_idx].status != INVALID) {
+    printf("No more segment array.\n");
+    printf("Try to allocate again.\n");
+    goto allocate_again;
+  }
+
   return &IA.indexArray[i_idx][s_idx];
 }
 
@@ -375,43 +389,18 @@ void* ConcurrentList::preAllocate(void*) {
       if(DBG_PREALLOC)
         printf("Trying to allocate new array by preallocator\n");
 
-      // TODO: Make it circular
-      size_t old_head = __sync_fetch_and_add(&IA.head, 1);
+      // Don't worry about data race. only preAllocate will access IA.head
 
-      if(old_head < IA.i_size) {
-        allocate_new_array(old_head);
-
+      if(allocate_new_array(IA.head)) {
         if(DBG_PREALLOC)
           printf("New array is allocated.\n");
-      } else if(old_head == IA.i_size){
-        if(DBG_PREALLOC) {
-          __sync_fetch_and_sub(&IA.head, 1);
-          printf("Fail to allocate new array.");
-          printf("Now only one array is left.\n");
 
-          printf("IndexArray:\n");
-          for(int i = 0; i < INDEX_ARRAY_SIZE; i++) {
-            printf("%lx\n", (intptr_t)IA.indexArray[i]);
-          }
-
-        }
+        IA.head = (IA.head + 1) % IA.i_size;
       } else {
-        printf("No more segment array slot.\n");
-        printf("Increase the semgnet array number.\n");
-        exit(1);
+        printf("Fail to allocate new array.");
+        printf("Now only one array is left.\n");
       }
     }
-
-
-/*     if(IA.head >= IA.last_used_i_idx
- *         && IA.head - IA.last_used_i_idx < 3) {
- *       // TODO
- *
- *     } else if(IA.head < IA.last_used_i_idx
- *         && (IA.head + IA.i_size) - IA.last_used_i_idx < 3) {
- *       // TODO
- *
- *     } */
 
     pthread_mutex_lock(&IA.preallocator_cond_mutex);
     IA.preallocator_sleeping = true;
