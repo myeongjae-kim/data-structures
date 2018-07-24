@@ -29,6 +29,9 @@
 #define RESET_INVALID_BIT(ptr) ((intptr_t)(ptr) & ~INVALID_BIT)
 #define GET_ADR(ptr) (((intptr_t)(ptr) << 16) >> 16)
 
+#define HAS_INVALID_BIT(ptr) (((intptr_t)(ptr) & INVALID_BIT) != 0)
+
+
 
 class ConcurrentList
 {

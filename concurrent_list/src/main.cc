@@ -41,25 +41,29 @@ void* thread_main(void* args) {
 
   //printf("Thread %ld start.\n", tid);
 
-  for(int i = 0; i < 512; i++) {
-    nodes.push_back(list->push_back(tid * 1000000 + i));
+  for(int k = 0; k < 1;k++) {
+    for(int i = 0; i < 4096; i++) {
+      nodes.push_back(list->push_back(tid * 1000000 + i));
+    }
+    
+    //printf("Thread %ld end.\n", tid);
+    
+    int cnt = 0;
+    for(auto it = nodes.rbegin();
+        // cnt < 10;
+        it != nodes.rend();
+        cnt++, it++) {
+      list->erase(*it);
+    }
+    nodes.clear();
   }
-  
-  //printf("Thread %ld end.\n", tid);
-  
-  int cnt = 0;
-  for(auto it = nodes.rbegin();
-      // cnt < 10;
-      it != nodes.rend();
-      cnt++, it++) {
-    list->erase(*it);
-  }
-
+  // nodes.push_back(list->push_back(tid * 1000000));
+ 
   delete[] args_ary;
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 31
+#define N_THREAD 8
 pthread_t threads[N_THREAD];
 
 int main(void)
