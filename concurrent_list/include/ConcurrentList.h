@@ -89,20 +89,14 @@ private:
     size_t i_size;  // Size of index array.
     size_t s_size;  // Size of segment array.
 
-    size_t head;
-    size_t tail;
+    /* size_t head;
+     * size_t tail; */
     size_t last_used_i_idx;
     size_t next_s_idx;
     
     ConcurrentList::node_t** indexArray;
     char* BVector;
     int BVector_size;
-
-    pthread_t preAllocator;
-    pthread_mutex_t preallocator_cond_mutex;
-    pthread_cond_t preallocator_cond;
-    bool preallocator_finished;
-    bool preallocator_sleeping;
 
     pthread_t deAllocator;
     pthread_mutex_t deallocator_cond_mutex;
@@ -116,7 +110,7 @@ private:
   void initIndexArray();
   void destroyIndexArray();
 
-  bool allocate_new_array(int);
+  node_t* allocate_new_array(int i);
 
   ConcurrentList::node_t* allocate_node();
 
@@ -130,10 +124,9 @@ private:
   void BVector_flip_and_test(MetaData);
 
 public:
-  void* preAllocate(void*);
   // Deallocate OBSOLETEd nodes
+  void reinit_seg_array(int);
   void* lazy_deAllocate(void*);
-
 
   void BVector_turn_off_bits_check();
   void BVector_turn_off_bits_check_by_array(int);
