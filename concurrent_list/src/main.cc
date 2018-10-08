@@ -4,6 +4,8 @@
 #include <vector>
 #include "ConcurrentList.h"
 
+#define N_THREAD 64
+
 using namespace std;
 
 bool is_correct(ConcurrentList & list, size_t s) {
@@ -63,7 +65,6 @@ void* thread_main(void* args) {
   pthread_exit((void *) 0);
 }
 
-#define N_THREAD 128
 pthread_t threads[N_THREAD];
 
 int main(void)
